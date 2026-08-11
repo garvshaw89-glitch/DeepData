@@ -1,0 +1,6 @@
+{
+  "name": "DEEPDATA",
+  "description": "Professional AI-Powered Capital Market Research Platform featuring real-time market data, institutional research, predictive analytics, live news aggregation, and automated portfolio intelligence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
