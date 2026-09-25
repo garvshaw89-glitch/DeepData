@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AlertTrigger } from '../types';
 import { MOCK_ALERTS } from '../data/mockMarketData';
 import { 
@@ -35,16 +35,28 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
   onUpdateVolatilityThreshold,
   onSimulateVolatilitySpike,
 }) => {
-  const [internalAlerts, setInternalAlerts] = useState<AlertTrigger[]>(MOCK_ALERTS);
-  const alerts = externalAlerts ?? internalAlerts;
+  const [internalAlerts, setInternalAlerts] = useState<AlertTrigger[]>(() => [...MOCK_ALERTS]);
+  const rawAlerts = externalAlerts ?? internalAlerts;
+
+  // Deduplicate alerts by unique id
+  const alerts = useMemo(() => {
+    const seen = new Set<string>();
+    return rawAlerts.filter((alt) => {
+      if (!alt.id || seen.has(alt.id)) return false;
+      seen.add(alt.id);
+      return true;
+    });
+  }, [rawAlerts]);
+
   const [newSymbol, setNewSymbol] = useState('');
   const [newPriceTarget, setNewPriceTarget] = useState('');
 
   const handleAddAlert = (e: React.FormEvent) => {
     e.preventDefault();
     if (newSymbol.trim()) {
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
       const created: AlertTrigger = {
-        id: `alt-${Date.now()}`,
+        id: `alt-${Date.now()}-${randomSuffix}`,
         symbol: newSymbol.trim().toUpperCase(),
         title: 'CUSTOM PRICE TARGET ALERT',
         type: 'PRICE_BREAKOUT',
@@ -58,7 +70,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
       if (onAddAlert) {
         onAddAlert(created);
       } else {
-        setInternalAlerts([created, ...internalAlerts]);
+        setInternalAlerts((prev) => [created, ...prev]);
       }
       setNewSymbol('');
       setNewPriceTarget('');
@@ -182,11 +194,11 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
 
       {/* Alert Triggers List */}
       <div className="space-y-3">
-        {alerts.map((alt) => {
+        {alerts.map((alt, idx) => {
           const isCrit = alt.severity === 'CRITICAL';
           return (
             <div
-              key={alt.id}
+              key={alt.id || `alert-${alt.symbol}-${idx}`}
               className={`bg-[#121214] border rounded p-4 shadow-sm transition-all space-y-2 ${
                 isCrit ? 'border-rose-900/80' : 'border-[#1F1F23]'
               }`}

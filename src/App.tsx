@@ -22,7 +22,7 @@ export default function App() {
   const [isCopilotLoading, setIsCopilotLoading] = useState<boolean>(false);
 
   // Volatility Monitoring & Alerts state
-  const [alerts, setAlerts] = useState<AlertTrigger[]>(MOCK_ALERTS);
+  const [alerts, setAlerts] = useState<AlertTrigger[]>(() => [...MOCK_ALERTS]);
   const [volatilityThreshold, setVolatilityThreshold] = useState<number>(2.0); // 2.0% threshold vs sparkline baseline
   const [activeVolatilityToast, setActiveVolatilityToast] = useState<AlertTrigger | null>(null);
   const alertedHistoryRef = useRef<Map<string, { lastAlertedPrice: number; lastAlertedTime: number }>>(new Map());
@@ -299,8 +299,9 @@ export default function App() {
         const direction = isSurge ? 'SURGE' : 'PLUNGE';
         const severity = absVolatility >= 3.5 ? 'CRITICAL' : 'HIGH';
 
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
         const newAlert: AlertTrigger = {
-          id: `vol-${quote.symbol}-${Date.now()}`,
+          id: `vol-${quote.symbol}-${now}-${randomSuffix}`,
           symbol: quote.symbol,
           title: `PRICE VOLATILITY ALERT: ${quote.symbol} ${direction}`,
           type: 'PRICE_BREAKOUT',
@@ -314,13 +315,15 @@ export default function App() {
           isRead: false,
         };
 
-        // 1. Trigger notification via global MOCK_ALERTS
-        MOCK_ALERTS.unshift(newAlert);
+        // Synchronize local alerts state without duplicates
+        setAlerts((prev) => {
+          if (prev.some((a) => a.id === newAlert.id)) {
+            return prev;
+          }
+          return [newAlert, ...prev];
+        });
 
-        // 2. Synchronize local alerts state
-        setAlerts((prev) => [newAlert, ...prev]);
-
-        // 3. Trigger immediate interactive notification toast
+        // Trigger immediate interactive notification toast
         setActiveVolatilityToast(newAlert);
       }
     });
@@ -538,8 +541,10 @@ export default function App() {
             <AlertsView
               alerts={alerts}
               onAddAlert={(customAlert) => {
-                MOCK_ALERTS.unshift(customAlert);
-                setAlerts((prev) => [customAlert, ...prev]);
+                setAlerts((prev) => {
+                  if (prev.some((a) => a.id === customAlert.id)) return prev;
+                  return [customAlert, ...prev];
+                });
               }}
               onSearchSymbol={handleSearchSymbol}
               onNavigateToAnalysis={() => setActiveTab('analysis')}
