@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { AssetQuote, ChatMessage, AuthSession } from './types';
+import React, { useState, useEffect, useRef } from 'react';
+import { AssetQuote, ChatMessage, AuthSession, AlertTrigger } from './types';
 import { INITIAL_QUOTES, MOCK_ALERTS } from './data/mockMarketData';
 import { Navbar } from './components/Navbar';
 import { MarketDashboard } from './components/MarketDashboard';
@@ -11,6 +11,7 @@ import { AlertsView } from './components/AlertsView';
 import { AICopilotDrawer } from './components/AICopilotDrawer';
 import { AuthModal } from './components/AuthModal';
 import { DataModelView } from './components/DataModelView';
+import { Bell, AlertTriangle, X, Zap } from 'lucide-react';
 
 export default function App() {
   const [quotes, setQuotes] = useState<AssetQuote[]>(INITIAL_QUOTES);
@@ -18,6 +19,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [isCopilotLoading, setIsCopilotLoading] = useState<boolean>(false);
+
+  // Volatility Monitoring & Alerts state
+  const [alerts, setAlerts] = useState<AlertTrigger[]>(MOCK_ALERTS);
+  const [volatilityThreshold, setVolatilityThreshold] = useState<number>(2.0); // 2.0% threshold vs sparkline baseline
+  const [activeVolatilityToast, setActiveVolatilityToast] = useState<AlertTrigger | null>(null);
+  const alertedHistoryRef = useRef<Map<string, { lastAlertedPrice: number; lastAlertedTime: number }>>(new Map());
 
   // Authentication & Session state
   const [currentSession, setCurrentSession] = useState<AuthSession | null>(null);
@@ -72,6 +79,119 @@ export default function App() {
     const interval = setInterval(fetchQuotes, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  /**
+   * Automatically monitors the 'quotes' state and compares current prices against the 'sparkline' history.
+   * If price volatility threshold is exceeded, triggers a notification via MOCK_ALERTS and local alerts state.
+   */
+  const monitorPriceVolatility = (quotesList: AssetQuote[], thresholdPercent: number = 2.0) => {
+    if (!quotesList || quotesList.length === 0) return;
+
+    const now = Date.now();
+    const cooldownMs = 60000; // 60s cooldown per symbol unless price shifts by an additional 1.0%
+
+    quotesList.forEach((quote) => {
+      // Must have sparkline historical data to compare against
+      if (!quote.sparkline || quote.sparkline.length === 0) return;
+
+      // Extract baseline price from sparkline history (earliest historical tick point)
+      const baselinePrice = quote.sparkline[0];
+      if (!baselinePrice || baselinePrice <= 0) return;
+
+      // Calculate percentage deviation between current price and sparkline baseline
+      const deviationPct = ((quote.price - baselinePrice) / baselinePrice) * 100;
+      const absVolatility = Math.abs(deviationPct);
+
+      // Check if price volatility threshold is exceeded
+      if (absVolatility >= thresholdPercent) {
+        const existingRecord = alertedHistoryRef.current.get(quote.symbol);
+
+        // Deduplication & cooldown check
+        if (existingRecord) {
+          const timeSinceLastAlert = now - existingRecord.lastAlertedTime;
+          const priceShiftSinceAlert = Math.abs((quote.price - existingRecord.lastAlertedPrice) / existingRecord.lastAlertedPrice) * 100;
+
+          if (timeSinceLastAlert < cooldownMs && priceShiftSinceAlert < 1.0) {
+            return;
+          }
+        }
+
+        // Record this alert event
+        alertedHistoryRef.current.set(quote.symbol, {
+          lastAlertedPrice: quote.price,
+          lastAlertedTime: now,
+        });
+
+        const isIndia = quote.currency === 'INR' || quote.region === 'INDIA';
+        const currSym = isIndia ? '₹' : '$';
+        const isSurge = deviationPct >= 0;
+        const direction = isSurge ? 'SURGE' : 'PLUNGE';
+        const severity = absVolatility >= 3.5 ? 'CRITICAL' : 'HIGH';
+
+        const newAlert: AlertTrigger = {
+          id: `vol-${quote.symbol}-${Date.now()}`,
+          symbol: quote.symbol,
+          title: `PRICE VOLATILITY ALERT: ${quote.symbol} ${direction}`,
+          type: 'PRICE_BREAKOUT',
+          severity,
+          timestamp: 'Just now',
+          message: `Automated Volatility Detection: ${quote.name} (${quote.symbol}) current price ${currSym}${quote.price.toFixed(2)} moved ${deviationPct >= 0 ? '+' : ''}${deviationPct.toFixed(2)}% against sparkline historical baseline (${currSym}${baselinePrice.toFixed(2)}). Volatility threshold (${thresholdPercent.toFixed(1)}%) exceeded.`,
+          currentPrice: quote.price,
+          recommendation: isSurge
+            ? `Upward breakout confirmed. Tighten trailing stop to ${currSym}${(quote.price * 0.97).toFixed(2)} and monitor volume.`
+            : `Sharp drawdown below sparkline support range. Risk mitigation advised near ${currSym}${(quote.price * 0.95).toFixed(2)}.`,
+          isRead: false,
+        };
+
+        // 1. Trigger notification via global MOCK_ALERTS
+        MOCK_ALERTS.unshift(newAlert);
+
+        // 2. Synchronize local alerts state
+        setAlerts((prev) => [newAlert, ...prev]);
+
+        // 3. Trigger immediate interactive notification toast
+        setActiveVolatilityToast(newAlert);
+      }
+    });
+  };
+
+  // Automatically monitor the 'quotes' state for price volatility compared to sparkline history
+  useEffect(() => {
+    monitorPriceVolatility(quotes, volatilityThreshold);
+  }, [quotes, volatilityThreshold]);
+
+  // Auto-dismiss active volatility toast notification after 7 seconds
+  useEffect(() => {
+    if (!activeVolatilityToast) return;
+    const timer = setTimeout(() => {
+      setActiveVolatilityToast(null);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [activeVolatilityToast]);
+
+  // Simulates a live price spike to test the automated volatility monitor
+  const handleSimulateVolatilitySpike = () => {
+    setQuotes((prevQuotes) => {
+      return prevQuotes.map((q, idx) => {
+        if (idx === 0) {
+          // Induce a +3.6% volatility spike on the first quote (e.g. RELIANCE)
+          const baseline = q.sparkline?.[0] || q.price;
+          const isUp = Math.random() > 0.4;
+          const factor = isUp ? 1.036 : 0.964;
+          const spikedPrice = Number((baseline * factor).toFixed(2));
+          const newChange = Number((spikedPrice - baseline).toFixed(2));
+          const newChangePct = Number(((newChange / baseline) * 100).toFixed(2));
+          return {
+            ...q,
+            price: spikedPrice,
+            change: newChange,
+            changePercent: newChangePct,
+          };
+        }
+        return q;
+      });
+    });
+  };
 
   const handleSearchSymbol = (symbol: string) => {
     const uppercaseSymbol = symbol.trim().toUpperCase();
@@ -164,7 +284,7 @@ export default function App() {
           setActiveTab={setActiveTab}
           onSearchSymbol={handleSearchSymbol}
           onToggleCopilot={() => setIsCopilotOpen(true)}
-          unreadAlertsCount={MOCK_ALERTS.filter((a) => !a.isRead).length}
+          unreadAlertsCount={alerts.filter((a) => !a.isRead).length}
           currentSession={currentSession}
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
         />
@@ -220,8 +340,16 @@ export default function App() {
 
           {activeTab === 'alerts' && (
             <AlertsView
+              alerts={alerts}
+              onAddAlert={(customAlert) => {
+                MOCK_ALERTS.unshift(customAlert);
+                setAlerts((prev) => [customAlert, ...prev]);
+              }}
               onSearchSymbol={handleSearchSymbol}
               onNavigateToAnalysis={() => setActiveTab('analysis')}
+              volatilityThreshold={volatilityThreshold}
+              onUpdateVolatilityThreshold={setVolatilityThreshold}
+              onSimulateVolatilitySpike={handleSimulateVolatilitySpike}
             />
           )}
 
@@ -230,6 +358,62 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Floating Volatility Alert Toast Notification */}
+      {activeVolatilityToast && (
+        <div className="fixed top-14 right-4 z-50 max-w-sm sm:max-w-md w-[calc(100vw-2rem)] bg-[#121214]/95 backdrop-blur-md border border-cyan-500/50 shadow-2xl shadow-cyan-500/10 rounded-lg p-3.5 transition-all animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start space-x-2.5">
+              <div className="p-2 rounded bg-cyan-950/70 border border-cyan-500/30 text-cyan-400 shrink-0 mt-0.5">
+                <Bell className="w-4 h-4 animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-mono font-bold text-xs text-white">{activeVolatilityToast.symbol}</span>
+                  <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                    activeVolatilityToast.severity === 'CRITICAL'
+                      ? 'bg-rose-950/70 text-rose-400 border-rose-800'
+                      : 'bg-amber-950/70 text-amber-400 border-amber-800'
+                  }`}>
+                    {activeVolatilityToast.severity} VOLATILITY
+                  </span>
+                </div>
+                <p className="text-xs text-slate-200 mt-1 line-clamp-2">
+                  {activeVolatilityToast.message}
+                </p>
+                <div className="flex items-center space-x-2 mt-2 pt-2 border-t border-[#1F1F23]">
+                  <button
+                    onClick={() => {
+                      handleSearchSymbol(activeVolatilityToast.symbol);
+                      setActiveTab('analysis');
+                      setActiveVolatilityToast(null);
+                    }}
+                    className="text-[11px] font-mono font-bold text-black bg-cyan-400 hover:bg-cyan-300 px-2.5 py-1 rounded cursor-pointer transition-colors"
+                  >
+                    Analyze {activeVolatilityToast.symbol}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab('alerts');
+                      setActiveVolatilityToast(null);
+                    }}
+                    className="text-[11px] font-mono text-cyan-300 hover:text-white px-2 py-1 rounded cursor-pointer"
+                  >
+                    View Signals
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveVolatilityToast(null)}
+              className="text-gray-400 hover:text-white p-1 rounded hover:bg-[#1F1F23] cursor-pointer"
+              aria-label="Dismiss notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-[#1F1F23] bg-[#09090B] py-6 text-center text-xs text-gray-500 font-mono">

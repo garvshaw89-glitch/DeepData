@@ -17,13 +17,26 @@ import {
 interface AlertsViewProps {
   onSearchSymbol: (symbol: string) => void;
   onNavigateToAnalysis: () => void;
+  alerts?: AlertTrigger[];
+  onAddAlert?: (alert: AlertTrigger) => void;
+  onMarkAllAsRead?: () => void;
+  volatilityThreshold?: number;
+  onUpdateVolatilityThreshold?: (threshold: number) => void;
+  onSimulateVolatilitySpike?: () => void;
 }
 
 export const AlertsView: React.FC<AlertsViewProps> = ({
   onSearchSymbol,
   onNavigateToAnalysis,
+  alerts: externalAlerts,
+  onAddAlert,
+  onMarkAllAsRead,
+  volatilityThreshold = 2.0,
+  onUpdateVolatilityThreshold,
+  onSimulateVolatilitySpike,
 }) => {
-  const [alerts, setAlerts] = useState<AlertTrigger[]>(MOCK_ALERTS);
+  const [internalAlerts, setInternalAlerts] = useState<AlertTrigger[]>(MOCK_ALERTS);
+  const alerts = externalAlerts ?? internalAlerts;
   const [newSymbol, setNewSymbol] = useState('');
   const [newPriceTarget, setNewPriceTarget] = useState('');
 
@@ -42,7 +55,11 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
         recommendation: 'Monitor breakout level on high volume.',
         isRead: false,
       };
-      setAlerts([created, ...alerts]);
+      if (onAddAlert) {
+        onAddAlert(created);
+      } else {
+        setInternalAlerts([created, ...internalAlerts]);
+      }
       setNewSymbol('');
       setNewPriceTarget('');
     }
@@ -71,6 +88,65 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Automated Sparkline Volatility Monitor Control Panel */}
+      <div className="bg-[#121214] border border-cyan-900/40 rounded p-4 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded bg-cyan-950/60 border border-cyan-800/60 text-cyan-400">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                  AUTOMATED SPARKLINE VOLATILITY MONITOR
+                </h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800">
+                  MONITORING LIVE QUOTES
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5 font-mono">
+                Engine continuously calculates % deviation of live tick prices against sparkline historical baselines and dispatches alerts via MOCK_ALERTS.
+              </p>
+            </div>
+          </div>
+
+          {onSimulateVolatilitySpike && (
+            <button
+              onClick={onSimulateVolatilitySpike}
+              className="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 text-xs px-3 py-1.5 rounded font-mono font-bold cursor-pointer transition-colors flex items-center space-x-1.5 shrink-0 self-start sm:self-center"
+            >
+              <Zap className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span>Simulate Volatility Spike</span>
+            </button>
+          )}
+        </div>
+
+        {onUpdateVolatilityThreshold && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#1F1F23] font-mono text-xs">
+            <span className="text-gray-400 text-[11px] flex items-center space-x-1">
+              <Sliders className="w-3.5 h-3.5 text-gray-500" />
+              <span>TRIGGER THRESHOLD:</span>
+            </span>
+            {[1.0, 1.5, 2.0, 3.0, 5.0].map((val) => (
+              <button
+                key={val}
+                onClick={() => onUpdateVolatilityThreshold(val)}
+                className={`px-2.5 py-1 rounded text-[11px] transition-colors cursor-pointer ${
+                  volatilityThreshold === val
+                    ? 'bg-cyan-500 text-black font-bold'
+                    : 'bg-[#18181B] text-gray-300 hover:bg-[#27272A] border border-[#27272A]'
+                }`}
+              >
+                ±{val.toFixed(1)}%
+              </button>
+            ))}
+            <span className="text-gray-500 text-[10px] ml-auto">
+              Current Setting: <strong className="text-cyan-400">±{volatilityThreshold.toFixed(1)}%</strong> vs Sparkline Baseline
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Configure New Alert Form */}
