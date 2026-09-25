@@ -17,7 +17,8 @@ import {
   Database,
   UserCheck,
   User,
-  Shield
+  Shield,
+  Briefcase
 } from 'lucide-react';
 import { AuthSession } from '../types';
 
@@ -57,6 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'dashboard', label: 'Overview', icon: BarChart3 },
     { id: 'analysis', label: 'AI Research', icon: Sparkles },
     { id: 'screener', label: 'Screener', icon: Filter },
+    { id: 'trading', label: 'Paper Trade', icon: Briefcase },
     { id: 'news', label: 'Live News', icon: Newspaper },
     { id: 'portfolio', label: 'Portfolio', icon: PieChart },
     { id: 'alerts', label: 'Signals', icon: ShieldAlert, badge: unreadAlertsCount },

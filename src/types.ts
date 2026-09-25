@@ -288,3 +288,36 @@ export interface ChatMessage {
   suggestedActions?: string[];
 }
 
+// Paper Trading Interfaces
+export interface PaperOrder {
+  id: string;
+  symbol: string;
+  name: string;
+  type: 'MARKET' | 'LIMIT';
+  side: 'BUY' | 'SELL';
+  shares: number;
+  orderPrice: number;
+  executionPrice: number;
+  totalCost: number;
+  currency: string;
+  timestamp: string;
+  status: 'FILLED' | 'PENDING' | 'CANCELLED';
+}
+
+export interface PaperPosition {
+  symbol: string;
+  name: string;
+  shares: number;
+  avgCost: number;
+  currency: string;
+  region: MarketRegion;
+}
+
+export interface VirtualPortfolio {
+  initialCash: number;
+  cashBalance: number;
+  positions: PaperPosition[];
+  orderHistory: PaperOrder[];
+}
+
+

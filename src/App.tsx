@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AssetQuote, ChatMessage, AuthSession, AlertTrigger } from './types';
+import { AssetQuote, ChatMessage, AuthSession, AlertTrigger, PaperOrder, PaperPosition } from './types';
 import { INITIAL_QUOTES, MOCK_ALERTS } from './data/mockMarketData';
 import { Navbar } from './components/Navbar';
 import { MarketDashboard } from './components/MarketDashboard';
 import { StockAnalysisView } from './components/StockAnalysisView';
 import { ScreenerView } from './components/ScreenerView';
+import { PaperTrading } from './components/PaperTrading';
 import { NewsFeedView } from './components/NewsFeedView';
 import { PortfolioView } from './components/PortfolioView';
 import { AlertsView } from './components/AlertsView';
@@ -25,6 +26,176 @@ export default function App() {
   const [volatilityThreshold, setVolatilityThreshold] = useState<number>(2.0); // 2.0% threshold vs sparkline baseline
   const [activeVolatilityToast, setActiveVolatilityToast] = useState<AlertTrigger | null>(null);
   const alertedHistoryRef = useRef<Map<string, { lastAlertedPrice: number; lastAlertedTime: number }>>(new Map());
+
+  // Virtual Paper Trading Portfolio State
+  const [virtualCash, setVirtualCash] = useState<number>(() => {
+    const saved = localStorage.getItem('deepdata_virtual_cash');
+    return saved ? parseFloat(saved) : 100000.00;
+  });
+
+  const [virtualPositions, setVirtualPositions] = useState<PaperPosition[]>(() => {
+    const saved = localStorage.getItem('deepdata_virtual_positions');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return [
+      { symbol: 'RELIANCE', name: 'Reliance Industries Ltd.', shares: 25, avgCost: 2940.00, currency: 'INR', region: 'INDIA' },
+      { symbol: 'AAPL', name: 'Apple Inc.', shares: 50, avgCost: 185.50, currency: 'USD', region: 'USA' },
+    ];
+  });
+
+  const [virtualOrders, setVirtualOrders] = useState<PaperOrder[]>(() => {
+    const saved = localStorage.getItem('deepdata_virtual_orders');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return [
+      {
+        id: 'ord-init-1',
+        symbol: 'RELIANCE',
+        name: 'Reliance Industries Ltd.',
+        type: 'MARKET',
+        side: 'BUY',
+        shares: 25,
+        orderPrice: 2940.00,
+        executionPrice: 2940.00,
+        totalCost: 73500.00,
+        currency: 'INR',
+        timestamp: 'Today, 09:30 AM',
+        status: 'FILLED',
+      },
+      {
+        id: 'ord-init-2',
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        type: 'MARKET',
+        side: 'BUY',
+        shares: 50,
+        orderPrice: 185.50,
+        executionPrice: 185.50,
+        totalCost: 9275.00,
+        currency: 'USD',
+        timestamp: 'Today, 10:15 AM',
+        status: 'FILLED',
+      },
+    ];
+  });
+
+  // Sync virtual portfolio state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('deepdata_virtual_cash', virtualCash.toString());
+    } catch (e) {}
+  }, [virtualCash]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('deepdata_virtual_positions', JSON.stringify(virtualPositions));
+    } catch (e) {}
+  }, [virtualPositions]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('deepdata_virtual_orders', JSON.stringify(virtualOrders));
+    } catch (e) {}
+  }, [virtualOrders]);
+
+  const handlePlacePaperOrder = (orderData: Omit<PaperOrder, 'id' | 'timestamp' | 'status'>) => {
+    const currSym = orderData.currency === 'INR' ? '₹' : '$';
+
+    if (orderData.side === 'BUY') {
+      if (orderData.totalCost > virtualCash) {
+        return {
+          success: false,
+          message: `Insufficient virtual cash. Order requires ${currSym}${orderData.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}, but available balance is ${currSym}${virtualCash.toLocaleString(undefined, { minimumFractionDigits: 2 })}.`,
+        };
+      }
+
+      setVirtualCash((prev) => prev - orderData.totalCost);
+
+      setVirtualPositions((prev) => {
+        const existing = prev.find((p) => p.symbol === orderData.symbol);
+        if (existing) {
+          const newShares = existing.shares + orderData.shares;
+          const weightedCost = ((existing.shares * existing.avgCost) + (orderData.shares * orderData.executionPrice)) / newShares;
+          return prev.map((p) =>
+            p.symbol === orderData.symbol
+              ? { ...p, shares: newShares, avgCost: Number(weightedCost.toFixed(2)) }
+              : p
+          );
+        } else {
+          const matchQuote = quotes.find((q) => q.symbol === orderData.symbol);
+          return [
+            ...prev,
+            {
+              symbol: orderData.symbol,
+              name: orderData.name,
+              shares: orderData.shares,
+              avgCost: orderData.executionPrice,
+              currency: orderData.currency,
+              region: matchQuote?.region || 'GLOBAL',
+            },
+          ];
+        }
+      });
+    } else {
+      // SELL ORDER
+      const existing = virtualPositions.find((p) => p.symbol === orderData.symbol);
+      if (!existing || existing.shares < orderData.shares) {
+        return {
+          success: false,
+          message: `Insufficient shares. You hold ${existing ? existing.shares : 0} shares of ${orderData.symbol}.`,
+        };
+      }
+
+      setVirtualCash((prev) => prev + orderData.totalCost);
+
+      setVirtualPositions((prev) => {
+        return prev
+          .map((p) => {
+            if (p.symbol === orderData.symbol) {
+              const remaining = p.shares - orderData.shares;
+              return { ...p, shares: remaining };
+            }
+            return p;
+          })
+          .filter((p) => p.shares > 0);
+      });
+    }
+
+    const executed: PaperOrder = {
+      ...orderData,
+      id: `ord-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      status: 'FILLED',
+    };
+
+    setVirtualOrders((prev) => [executed, ...prev]);
+
+    return {
+      success: true,
+      message: `Successfully executed ${orderData.side} order for ${orderData.shares} shares of ${orderData.symbol} @ ${currSym}${orderData.executionPrice.toFixed(2)}.`,
+    };
+  };
+
+  const handleResetVirtualPortfolio = () => {
+    setVirtualCash(100000.00);
+    setVirtualPositions([]);
+    setVirtualOrders([]);
+    try {
+      localStorage.removeItem('deepdata_virtual_cash');
+      localStorage.removeItem('deepdata_virtual_positions');
+      localStorage.removeItem('deepdata_virtual_orders');
+    } catch (e) {}
+  };
 
   // Authentication & Session state
   const [currentSession, setCurrentSession] = useState<AuthSession | null>(null);
@@ -300,6 +471,10 @@ export default function App() {
                 setSelectedQuote(q);
                 setActiveTab('analysis');
               }}
+              onTradeQuote={(q) => {
+                setSelectedQuote(q);
+                setActiveTab('trading');
+              }}
             />
           )}
 
@@ -310,6 +485,7 @@ export default function App() {
                 setIsCopilotOpen(true);
                 handleSendMessageToCopilot(prompt);
               }}
+              onNavigateToPaperTrading={() => setActiveTab('trading')}
             />
           )}
 
@@ -321,6 +497,20 @@ export default function App() {
                 setSelectedQuote(q);
                 setActiveTab('analysis');
               }}
+            />
+          )}
+
+          {activeTab === 'trading' && (
+            <PaperTrading
+              selectedQuote={selectedQuote}
+              quotes={quotes}
+              onSelectQuote={setSelectedQuote}
+              virtualCash={virtualCash}
+              positions={virtualPositions}
+              orderHistory={virtualOrders}
+              onPlaceOrder={handlePlacePaperOrder}
+              onResetPortfolio={handleResetVirtualPortfolio}
+              onNavigateToAnalysis={() => setActiveTab('analysis')}
             />
           )}
 

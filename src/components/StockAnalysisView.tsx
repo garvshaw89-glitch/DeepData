@@ -17,17 +17,20 @@ import {
   Send, 
   Loader2,
   Lock,
-  Compass
+  Compass,
+  Briefcase
 } from 'lucide-react';
 
 interface StockAnalysisViewProps {
   selectedQuote: AssetQuote;
   onAskCopilot: (prompt: string) => void;
+  onNavigateToPaperTrading?: () => void;
 }
 
 export const StockAnalysisView: React.FC<StockAnalysisViewProps> = ({
   selectedQuote,
   onAskCopilot,
+  onNavigateToPaperTrading,
 }) => {
   const [report, setReport] = useState<AIStockAnalysisReport | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -127,6 +130,18 @@ export const StockAnalysisView: React.FC<StockAnalysisViewProps> = ({
               <span className="text-[9px] text-gray-500 uppercase font-mono tracking-widest block">RISK / REWARD</span>
               <span className="text-base font-bold font-mono text-cyan-400">{report.riskRewardRatio}x</span>
             </div>
+
+            {onNavigateToPaperTrading && (
+              <div className="border-l border-[#1F1F23] pl-3">
+                <button
+                  onClick={onNavigateToPaperTrading}
+                  className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:border-emerald-400 px-3 py-1.5 rounded text-xs font-mono font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Paper Trade {report.symbol}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

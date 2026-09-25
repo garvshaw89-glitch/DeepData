@@ -13,7 +13,8 @@ import {
   Zap, 
   Filter, 
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Briefcase
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -32,6 +33,7 @@ interface MarketDashboardProps {
   selectedQuote: AssetQuote;
   onSelectQuote: (quote: AssetQuote) => void;
   onAnalyzeQuote: (quote: AssetQuote) => void;
+  onTradeQuote?: (quote: AssetQuote) => void;
 }
 
 export const MarketDashboard: React.FC<MarketDashboardProps> = ({
@@ -39,6 +41,7 @@ export const MarketDashboard: React.FC<MarketDashboardProps> = ({
   selectedQuote,
   onSelectQuote,
   onAnalyzeQuote,
+  onTradeQuote,
 }) => {
   const [assetFilter, setAssetFilter] = useState<string>('all');
   const [chartTimeframe, setChartTimeframe] = useState<string>('1D');
@@ -225,6 +228,16 @@ export const MarketDashboard: React.FC<MarketDashboardProps> = ({
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>AI_RESEARCH</span>
               </button>
+
+              {onTradeQuote && (
+                <button
+                  onClick={() => onTradeQuote(selectedQuote)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-mono font-semibold flex items-center space-x-1 cursor-pointer transition-colors"
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>PAPER_TRADE</span>
+                </button>
+              )}
             </div>
           </div>
 
