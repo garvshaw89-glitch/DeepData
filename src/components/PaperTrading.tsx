@@ -30,6 +30,7 @@ interface PaperTradingProps {
   onPlaceOrder: (order: Omit<PaperOrder, 'id' | 'timestamp' | 'status'>) => { success: boolean; message: string };
   onResetPortfolio: () => void;
   onNavigateToAnalysis: () => void;
+  onNavigateToPortfolio?: () => void;
 }
 
 export const PaperTrading: React.FC<PaperTradingProps> = ({
@@ -42,6 +43,7 @@ export const PaperTrading: React.FC<PaperTradingProps> = ({
   onPlaceOrder,
   onResetPortfolio,
   onNavigateToAnalysis,
+  onNavigateToPortfolio,
 }) => {
   // Order Form State
   const [orderSide, setOrderSide] = useState<'BUY' | 'SELL'>('BUY');
@@ -49,6 +51,7 @@ export const PaperTrading: React.FC<PaperTradingProps> = ({
   const [sharesInput, setSharesInput] = useState<string>('10');
   const [limitPriceInput, setLimitPriceInput] = useState<string>(selectedQuote.price.toString());
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isResetConfirming, setIsResetConfirming] = useState<boolean>(false);
 
   // Synchronize limit price when selected quote changes
   React.useEffect(() => {
@@ -180,19 +183,47 @@ export const PaperTrading: React.FC<PaperTradingProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => {
-                if (window.confirm('Reset virtual portfolio back to initial $100,000 cash balance and clear all holdings?')) {
-                  onResetPortfolio();
-                  setFeedbackMessage({ type: 'success', text: 'Virtual portfolio reset to $100,000.00 cash balance.' });
-                }
-              }}
-              className="bg-[#18181B] hover:bg-[#27272A] text-gray-300 border border-[#27272A] hover:border-gray-600 px-3 py-1.5 rounded text-xs font-mono font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-gray-400" />
-              <span>Reset Portfolio</span>
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onNavigateToPortfolio && (
+              <button
+                onClick={onNavigateToPortfolio}
+                className="bg-[#18181B] hover:bg-[#27272A] text-cyan-400 border border-cyan-800/40 hover:border-cyan-600 px-3 py-1.5 rounded text-xs font-mono font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
+                title="View full portfolio analytics and download CSV reports"
+              >
+                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Portfolio & Export CSV</span>
+              </button>
+            )}
+
+            {isResetConfirming ? (
+              <div className="flex items-center space-x-1.5 bg-[#18181B] border border-rose-800/60 p-1 rounded">
+                <span className="text-[10px] text-rose-300 font-mono pl-1.5">Reset to $100k?</span>
+                <button
+                  onClick={() => {
+                    onResetPortfolio();
+                    setIsResetConfirming(false);
+                    setFeedbackMessage({ type: 'success', text: 'Virtual portfolio reset to $100,000.00 cash balance.' });
+                  }}
+                  className="bg-rose-600 hover:bg-rose-500 text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold cursor-pointer"
+                >
+                  Yes, Reset
+                </button>
+                <button
+                  onClick={() => setIsResetConfirming(false)}
+                  className="bg-[#27272A] hover:bg-[#3F3F46] text-gray-300 px-2 py-0.5 rounded text-[10px] font-mono cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsResetConfirming(true)}
+                className="bg-[#18181B] hover:bg-[#27272A] text-gray-300 border border-[#27272A] hover:border-gray-600 px-3 py-1.5 rounded text-xs font-mono font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-gray-400" />
+                <span>Reset Portfolio</span>
+              </button>
+            )}
           </div>
         </div>
 

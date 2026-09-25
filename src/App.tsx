@@ -511,6 +511,7 @@ export default function App() {
               onPlaceOrder={handlePlacePaperOrder}
               onResetPortfolio={handleResetVirtualPortfolio}
               onNavigateToAnalysis={() => setActiveTab('analysis')}
+              onNavigateToPortfolio={() => setActiveTab('portfolio')}
             />
           )}
 
@@ -525,6 +526,11 @@ export default function App() {
             <PortfolioView
               onSearchSymbol={handleSearchSymbol}
               onNavigateToAnalysis={() => setActiveTab('analysis')}
+              virtualPositions={virtualPositions}
+              virtualOrders={virtualOrders}
+              virtualCash={virtualCash}
+              quotes={quotes}
+              onNavigateToTrading={() => setActiveTab('trading')}
             />
           )}
 
