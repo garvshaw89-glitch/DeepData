@@ -630,6 +630,18 @@ app.get("/api/alerts", (req, res) => {
   res.json(MOCK_ALERTS);
 });
 
+// Explicit Favicon Endpoints
+app.get("/favicon.ico", (req, res) => {
+  const icoPath = path.join(process.cwd(), "public", "favicon.ico");
+  res.sendFile(icoPath);
+});
+
+app.get("/favicon.svg", (req, res) => {
+  const svgPath = path.join(process.cwd(), "public", "favicon.svg");
+  res.setHeader("Content-Type", "image/svg+xml");
+  res.sendFile(svgPath);
+});
+
 // Serve Vite frontend in dev vs production
 async function setupServer() {
   if (process.env.NODE_ENV !== "production") {

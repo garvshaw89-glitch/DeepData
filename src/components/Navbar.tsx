@@ -1,24 +1,16 @@
 import React, { useState } from 'react';
 import { 
-  TrendingUp, 
   Search, 
-  Bell, 
-  Bot, 
-  BarChart3, 
-  LineChart, 
-  Filter, 
-  Newspaper, 
-  PieChart, 
-  ShieldAlert, 
-  Zap,
-  Globe,
-  Sparkles,
+  Sparkles, 
+  Briefcase, 
+  Menu, 
+  X, 
+  Sliders,
   Layers,
-  Database,
-  UserCheck,
+  Terminal,
+  Compass,
   User,
-  Shield,
-  Briefcase
+  ArrowRight
 } from 'lucide-react';
 import { AuthSession } from '../types';
 
@@ -30,6 +22,8 @@ interface NavbarProps {
   unreadAlertsCount: number;
   currentSession: AuthSession | null;
   onOpenAuthModal: () => void;
+  viewMode: 'story' | 'terminal';
+  onToggleViewMode: (mode: 'story' | 'terminal') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -40,181 +34,272 @@ export const Navbar: React.FC<NavbarProps> = ({
   unreadAlertsCount,
   currentSession,
   onOpenAuthModal,
+  viewMode,
+  onToggleViewMode,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const navItems = [
+    { id: 'dashboard', label: 'Terminal', targetMode: 'terminal' as const },
+    { id: 'analysis', label: 'AI Research', targetMode: 'terminal' as const },
+    { id: 'screener', label: 'Screener', targetMode: 'terminal' as const },
+    { id: 'trading', label: 'Paper Trade', targetMode: 'terminal' as const },
+    { id: 'portfolio', label: 'Portfolio', targetMode: 'terminal' as const },
+    { id: 'alerts', label: 'Signals', unread: unreadAlertsCount, targetMode: 'terminal' as const },
+    { id: 'news', label: 'News', targetMode: 'terminal' as const },
+  ];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       onSearchSymbol(searchQuery.trim().toUpperCase());
+      onToggleViewMode('terminal');
       setActiveTab('analysis');
       setSearchQuery('');
       setIsSearchOpen(false);
     }
   };
 
-  const navItems = [
-    { id: 'dashboard', label: 'Overview', icon: BarChart3 },
-    { id: 'analysis', label: 'AI Research', icon: Sparkles },
-    { id: 'screener', label: 'Screener', icon: Filter },
-    { id: 'trading', label: 'Paper Trade', icon: Briefcase },
-    { id: 'news', label: 'Live News', icon: Newspaper },
-    { id: 'portfolio', label: 'Portfolio', icon: PieChart },
-    { id: 'alerts', label: 'Signals', icon: ShieldAlert, badge: unreadAlertsCount },
-    { id: 'datamodel', label: 'Data Model', icon: Database },
-  ];
+  const handleNavClick = (id: string, targetMode: 'story' | 'terminal') => {
+    onToggleViewMode(targetMode);
+    setActiveTab(id);
+    setIsMobileMenuOpen(false);
+  };
 
-  const quickSymbols = ['RELIANCE', 'TCS', 'HDFCBANK', 'NIFTY50', 'AAPL', 'MSFT', 'NVDA', 'VOO', 'GOI_687_2033'];
+  const quickTickers = ['RELIANCE', 'TCS', 'HDFCBANK', 'AAPL', 'NVDA', 'SPY', 'GLD'];
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0F0F12] border-b border-[#1F1F23] text-[#A1A1AA]">
-      {/* Top Telemetry & Market Bar */}
-      <div className="bg-[#09090B] border-b border-[#1F1F23] px-4 py-1 text-[10px] font-mono flex items-center justify-between text-gray-400 overflow-x-auto whitespace-nowrap scrollbar-none">
-        <div className="flex items-center space-x-5">
-          <div className="flex items-center space-x-1.5 bg-[#1F1F23] px-2 py-0.5 rounded text-[10px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-gray-300 font-semibold tracking-wider">NODE_ALPHA_READY</span>
-          </div>
-          <div className="flex items-center space-x-4 text-[10px]">
-            <span>NIFTY 50: <strong className="text-emerald-400">24,850.40 (+0.75%)</strong></span>
-            <span>SENSEX: <strong className="text-emerald-400">81,420.10 (+0.81%)</strong></span>
-            <span>RELIANCE: <strong className="text-emerald-400">₹2,980.50 (+1.43%)</strong></span>
-            <span>TCS: <strong className="text-emerald-400">₹4,150.00 (+1.68%)</strong></span>
-            <span>S&P 500: <strong className="text-emerald-400">5,430.20 (+0.45%)</strong></span>
-            <span>10Y G-SEC: <strong className="text-emerald-400">6.15% (-2bps)</strong></span>
-          </div>
-        </div>
-        <div className="flex items-center space-x-3 text-gray-400 pl-4 border-l border-[#1F1F23]">
-          <Globe className="w-3 h-3 text-cyan-400" />
-          <span>Ingest Stream: <strong className="text-white">India & Global Sync</strong></span>
-        </div>
-      </div>
-
-      {/* Main Header */}
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-12">
-          {/* Logo Brand */}
-          <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="w-5 h-5 bg-cyan-500 rounded-sm flex items-center justify-center text-black font-black text-[10px] shadow-sm">
-              D
-            </div>
-            <span className="text-white font-semibold tracking-tighter text-sm">
-              DEEPDATA <span className="text-cyan-500 font-normal">v2.4</span>
-            </span>
-          </div>
-
-          {/* Compact High-Density Search Bar */}
-          <div className="relative flex-1 max-w-sm mx-1.5 sm:mx-4">
-            <form onSubmit={handleSearchSubmit} className="relative">
-              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setIsSearchOpen(true)}
-                placeholder="Search symbol (RELIANCE, AAPL)..."
-                className="w-full bg-[#121214] text-white text-xs pl-8 pr-16 sm:pr-20 py-1.5 rounded border border-[#1F1F23] focus:border-cyan-500 transition-all outline-none placeholder:text-gray-600 font-mono"
-              />
-              <button
-                type="submit"
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] px-1.5 sm:px-2 py-0.5 rounded transition-colors font-mono font-medium cursor-pointer"
-              >
-                RESEARCH
-              </button>
-            </form>
-
-            {/* Quick Symbol Dropdown */}
-            {isSearchOpen && (
-              <div 
-                className="absolute left-0 right-0 top-9 bg-[#121214] border border-[#1F1F23] rounded shadow-2xl p-2.5 z-50"
-                onMouseLeave={() => setIsSearchOpen(false)}
-              >
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Quick Ingest Target</p>
-                <div className="flex flex-wrap gap-1">
-                  {quickSymbols.map((sym) => (
-                    <button
-                      key={sym}
-                      type="button"
-                      onClick={() => {
-                        onSearchSymbol(sym);
-                        setActiveTab('analysis');
-                        setIsSearchOpen(false);
-                      }}
-                      className="text-[10px] bg-[#18181B] hover:bg-[#27272A] text-cyan-400 px-2 py-0.5 rounded border border-[#27272A] font-mono cursor-pointer transition-colors"
-                    >
-                      {sym}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Auth & AI Copilot Buttons */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
-            
-            {/* User Auth Profile Button */}
+    <header className="sticky top-0 z-50 w-full bg-[#070709]/85 backdrop-blur-xl border-b border-white/[0.08] transition-all">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        {/* Top Bar Contract: Brand — 4-6 Nav Links — 1-2 Primary Actions */}
+        <div className="flex items-center justify-between h-14 md:h-16">
+          {/* Zone 1: Single Text Element Brand Wordmark */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={onOpenAuthModal}
-              className={`flex items-center space-x-1.5 px-2 sm:px-2.5 py-1.5 rounded text-xs font-mono border transition-all cursor-pointer ${
-                currentSession
-                  ? 'bg-cyan-950/60 border-cyan-500/80 text-cyan-300 hover:bg-cyan-900/80'
-                  : 'bg-[#1F1F23] border-[#3F3F46] text-gray-300 hover:text-white'
+              onClick={() => {
+                onToggleViewMode('story');
+                setActiveTab('dashboard');
+              }}
+              className="flex items-center gap-2 group cursor-pointer focus:outline-none"
+              aria-label="DEEPDATA Home"
+            >
+              <span className="w-2 h-2 rounded-full bg-cyan-400 group-hover:scale-125 transition-transform shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+              <span className="font-display font-bold text-lg sm:text-xl tracking-tight text-white group-hover:text-cyan-300 transition-colors">
+                DEEPDATA
+              </span>
+            </button>
+          </div>
+
+          {/* Zone 2: Clean Typography Nav Links (Single-Line, Unboxed) */}
+          <nav className="hidden lg:flex items-center gap-7 text-xs font-sans tracking-wide">
+            <button
+              onClick={() => onToggleViewMode(viewMode === 'story' ? 'terminal' : 'story')}
+              className={`relative py-1 transition-colors cursor-pointer ${
+                viewMode === 'story'
+                  ? 'text-white font-semibold'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              {currentSession ? (
+              Experience
+              {viewMode === 'story' && (
+                <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-cyan-400 rounded-full" />
+              )}
+            </button>
+
+            {navItems.map((item) => {
+              const isActive = viewMode === 'terminal' && activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id, item.targetMode)}
+                  className={`relative py-1 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    isActive
+                      ? 'text-white font-semibold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  {item.unread !== undefined && item.unread > 0 && (
+                    <span className="text-[10px] font-mono text-cyan-400">
+                      · {item.unread}
+                    </span>
+                  )}
+                  {isActive && (
+                    <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-cyan-400 rounded-full" />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Zone 3: Primary Actions */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Quick Search Button */}
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors cursor-pointer"
+              title="Search Symbol or Asset"
+              aria-label="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+
+            {/* AI Copilot Quick Trigger */}
+            <button
+              onClick={onToggleCopilot}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-cyan-300 hover:text-white bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/30 rounded-lg transition-all cursor-pointer"
+              title="Open Gemini AI Research Copilot"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>AI Copilot</span>
+            </button>
+
+            {/* Mode Switcher Button: Story / Terminal */}
+            <button
+              onClick={() => onToggleViewMode(viewMode === 'story' ? 'terminal' : 'story')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer border ${
+                viewMode === 'terminal'
+                  ? 'bg-white text-black border-white shadow-sm hover:bg-slate-200'
+                  : 'bg-cyan-500 hover:bg-cyan-400 text-black border-cyan-400 shadow-md shadow-cyan-500/10'
+              }`}
+            >
+              {viewMode === 'story' ? (
                 <>
-                  <UserCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="max-w-[70px] sm:max-w-[90px] truncate font-bold text-[11px]">{currentSession.user.fullName.split(' ')[0]}</span>
+                  <Terminal className="w-3.5 h-3.5" />
+                  <span>Launch Terminal</span>
                 </>
               ) : (
                 <>
-                  <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                  <span className="text-[11px]">LOG_IN</span>
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>Story Mode</span>
                 </>
               )}
             </button>
 
-            {/* AI Copilot Launch Button */}
+            {/* User Session Profile Button */}
             <button
-              onClick={onToggleCopilot}
-              className="flex items-center space-x-1.5 bg-[#1F1F23] hover:bg-[#27272A] text-white px-2.5 sm:px-3 py-1.5 rounded text-xs font-medium border border-[#3F3F46] transition-all cursor-pointer shrink-0"
+              onClick={onOpenAuthModal}
+              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors cursor-pointer"
+              title={currentSession ? `Logged in as ${currentSession.user.fullName}` : 'Sign In'}
+              aria-label="User Account"
             >
-              <Bot className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span className="hidden sm:inline text-[11px] font-mono">AI_COPILOT</span>
+              <User className="w-4 h-4" />
+            </button>
+
+            {/* Mobile Hamburger Toggle */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors cursor-pointer"
+              aria-label="Toggle Navigation Menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Primary Navigation Tabs */}
-        <nav className="flex space-x-4 sm:space-x-6 text-[11px] uppercase tracking-widest font-medium border-t border-[#1F1F23] overflow-x-auto scrollbar-none pt-2 pb-0">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
+        {/* Expandable Search Drawer */}
+        {isSearchOpen && (
+          <div className="py-3 border-t border-white/[0.08] animate-in fade-in slide-in-from-top-2 duration-150">
+            <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Enter ticker symbol (e.g. RELIANCE, AAPL, NVDA, TCS)..."
+                  className="w-full bg-[#0F1115] border border-white/[0.1] rounded-lg pl-9 pr-4 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  autoFocus
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-cyan-500 hover:bg-cyan-400 text-black px-4 py-2 rounded-lg text-xs font-mono font-bold cursor-pointer transition-colors"
+              >
+                Inspect
+              </button>
+            </form>
+
+            <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 text-[11px] font-mono text-slate-500">
+              <span>Quick Tickers:</span>
+              {quickTickers.map((sym) => (
+                <button
+                  key={sym}
+                  onClick={() => {
+                    onSearchSymbol(sym);
+                    onToggleViewMode('terminal');
+                    setActiveTab('analysis');
+                    setIsSearchOpen(false);
+                  }}
+                  className="text-slate-400 hover:text-cyan-300 hover:underline cursor-pointer"
+                >
+                  {sym}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Full-Screen Mobile Drawer Menu */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden fixed inset-x-0 top-[57px] bottom-0 bg-[#070709]/98 backdrop-blur-2xl z-50 p-6 flex flex-col justify-between overflow-y-auto animate-in fade-in duration-200">
+          <div className="space-y-4">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 pb-2 border-b border-white/[0.08]">
+              NAVIGATION & WORKSPACES
+            </div>
+
+            <button
+              onClick={() => {
+                onToggleViewMode('story');
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full text-left text-xl font-display font-semibold text-white py-2 flex items-center justify-between"
+            >
+              <span>Editorial Experience</span>
+              <ArrowRight className="w-4 h-4 text-cyan-400" />
+            </button>
+
+            {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center space-x-1.5 pb-2 border-b-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  isActive
-                    ? 'text-white border-cyan-500 font-bold'
-                    : 'text-[#A1A1AA] border-transparent hover:text-white'
-                }`}
+                onClick={() => handleNavClick(item.id, item.targetMode)}
+                className="w-full text-left text-xl font-display font-semibold text-slate-300 hover:text-cyan-300 py-2 flex items-center justify-between border-t border-white/[0.05]"
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cyan-400' : 'text-gray-500'}`} />
                 <span>{item.label}</span>
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className="ml-1 px-1 py-0.2 bg-rose-500 text-white text-[9px] font-bold rounded-full font-mono">
-                    {item.badge}
-                  </span>
+                {item.unread !== undefined && item.unread > 0 && (
+                  <span className="text-xs font-mono text-cyan-400">· {item.unread} alerts</span>
                 )}
               </button>
-            );
-          })}
-        </nav>
-      </div>
+            ))}
+          </div>
+
+          <div className="pt-6 border-t border-white/[0.08] space-y-3">
+            <button
+              onClick={() => {
+                onToggleCopilot();
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full py-3 rounded-lg bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              <span>Launch Gemini AI Copilot</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onOpenAuthModal();
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full py-3 rounded-lg bg-[#14161C] border border-white/[0.08] text-white font-mono text-xs font-medium"
+            >
+              {currentSession ? `Logged in: ${currentSession.user.fullName}` : 'Sign In / Account'}
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
-

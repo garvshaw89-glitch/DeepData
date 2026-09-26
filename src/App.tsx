@@ -12,12 +12,15 @@ import { AlertsView } from './components/AlertsView';
 import { AICopilotDrawer } from './components/AICopilotDrawer';
 import { AuthModal } from './components/AuthModal';
 import { DataModelView } from './components/DataModelView';
-import { Bell, AlertTriangle, X, Zap } from 'lucide-react';
+import { CinematicLanding } from './components/CinematicLanding';
+import { CustomCursor } from './components/CustomCursor';
+import { Bell, AlertTriangle, X, Zap, ArrowLeft, Terminal, LayoutDashboard } from 'lucide-react';
 
 export default function App() {
   const [quotes, setQuotes] = useState<AssetQuote[]>(INITIAL_QUOTES);
   const [selectedQuote, setSelectedQuote] = useState<AssetQuote>(INITIAL_QUOTES[0]);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [viewMode, setViewMode] = useState<'story' | 'terminal'>('story');
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [isCopilotLoading, setIsCopilotLoading] = useState<boolean>(false);
 
@@ -450,7 +453,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 font-sans selection:bg-cyan-500 selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-[#070709] text-slate-100 font-sans selection:bg-cyan-500 selection:text-white flex flex-col justify-between">
+      <CustomCursor />
       <div>
         {/* Navigation Header */}
         <Navbar
@@ -461,101 +465,172 @@ export default function App() {
           unreadAlertsCount={alerts.filter((a) => !a.isRead).length}
           currentSession={currentSession}
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          viewMode={viewMode}
+          onToggleViewMode={setViewMode}
         />
 
-        {/* View Switcher */}
+        {/* View Switcher: Story Landing Experience vs Full High-Density Terminal Workspace */}
         <main className="pb-12">
-          {activeTab === 'dashboard' && (
-            <MarketDashboard
+          {viewMode === 'story' ? (
+            <CinematicLanding
               quotes={quotes}
               selectedQuote={selectedQuote}
               onSelectQuote={setSelectedQuote}
-              onAnalyzeQuote={(q) => {
-                setSelectedQuote(q);
-                setActiveTab('analysis');
+              onLaunchTerminal={(targetTab = 'dashboard') => {
+                setActiveTab(targetTab);
+                setViewMode('terminal');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              onTradeQuote={(q) => {
-                setSelectedQuote(q);
-                setActiveTab('trading');
-              }}
-            />
-          )}
-
-          {activeTab === 'analysis' && (
-            <StockAnalysisView
-              selectedQuote={selectedQuote}
-              onAskCopilot={(prompt) => {
-                setIsCopilotOpen(true);
-                handleSendMessageToCopilot(prompt);
-              }}
-              onNavigateToPaperTrading={() => setActiveTab('trading')}
-            />
-          )}
-
-          {activeTab === 'screener' && (
-            <ScreenerView
-              quotes={quotes}
-              onSelectQuote={setSelectedQuote}
-              onAnalyzeQuote={(q) => {
-                setSelectedQuote(q);
-                setActiveTab('analysis');
-              }}
-            />
-          )}
-
-          {activeTab === 'trading' && (
-            <PaperTrading
-              selectedQuote={selectedQuote}
-              quotes={quotes}
-              onSelectQuote={setSelectedQuote}
+              onSearchSymbol={handleSearchSymbol}
               virtualCash={virtualCash}
-              positions={virtualPositions}
-              orderHistory={virtualOrders}
-              onPlaceOrder={handlePlacePaperOrder}
-              onResetPortfolio={handleResetVirtualPortfolio}
-              onNavigateToAnalysis={() => setActiveTab('analysis')}
-              onNavigateToPortfolio={() => setActiveTab('portfolio')}
-            />
-          )}
-
-          {activeTab === 'news' && (
-            <NewsFeedView
-              onSearchSymbol={handleSearchSymbol}
-              onNavigateToAnalysis={() => setActiveTab('analysis')}
-            />
-          )}
-
-          {activeTab === 'portfolio' && (
-            <PortfolioView
-              onSearchSymbol={handleSearchSymbol}
-              onNavigateToAnalysis={() => setActiveTab('analysis')}
               virtualPositions={virtualPositions}
               virtualOrders={virtualOrders}
-              virtualCash={virtualCash}
-              quotes={quotes}
-              onNavigateToTrading={() => setActiveTab('trading')}
-            />
-          )}
-
-          {activeTab === 'alerts' && (
-            <AlertsView
-              alerts={alerts}
-              onAddAlert={(customAlert) => {
-                setAlerts((prev) => {
-                  if (prev.some((a) => a.id === customAlert.id)) return prev;
-                  return [customAlert, ...prev];
-                });
-              }}
-              onSearchSymbol={handleSearchSymbol}
-              onNavigateToAnalysis={() => setActiveTab('analysis')}
+              onPlaceOrder={handlePlacePaperOrder}
               volatilityThreshold={volatilityThreshold}
               onUpdateVolatilityThreshold={setVolatilityThreshold}
               onSimulateVolatilitySpike={handleSimulateVolatilitySpike}
+              alerts={alerts}
+              onToggleCopilot={() => setIsCopilotOpen(true)}
             />
-          )}
+          ) : (
+            <div className="space-y-4">
+              {/* Terminal Sub-header Navigation Strip */}
+              <div className="border-b border-white/[0.08] bg-[#0A0B0E]/80 backdrop-blur-md px-4 sm:px-6 py-2.5">
+                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setViewMode('story')}
+                      className="flex items-center gap-1.5 text-xs font-mono text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Experience Overview</span>
+                    </button>
+                    <span className="text-slate-600">/</span>
+                    <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                      {activeTab.toUpperCase()} WORKSPACE
+                    </span>
+                  </div>
 
-          {activeTab === 'datamodel' && (
-            <DataModelView />
+                  <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none font-mono text-xs">
+                    {[
+                      { id: 'dashboard', label: 'Overview' },
+                      { id: 'analysis', label: 'AI Research' },
+                      { id: 'screener', label: 'Screener' },
+                      { id: 'trading', label: 'Paper Trade' },
+                      { id: 'portfolio', label: 'Portfolio (CSV)' },
+                      { id: 'alerts', label: 'Signals' },
+                      { id: 'news', label: 'News' },
+                      { id: 'datamodel', label: 'Schema' },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`px-2.5 py-1 rounded text-[11px] transition-colors cursor-pointer ${
+                          activeTab === tab.id
+                            ? 'bg-cyan-500 text-black font-bold'
+                            : 'text-slate-400 hover:text-white bg-[#12141A]'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {activeTab === 'dashboard' && (
+                <MarketDashboard
+                  quotes={quotes}
+                  selectedQuote={selectedQuote}
+                  onSelectQuote={setSelectedQuote}
+                  onAnalyzeQuote={(q) => {
+                    setSelectedQuote(q);
+                    setActiveTab('analysis');
+                  }}
+                  onTradeQuote={(q) => {
+                    setSelectedQuote(q);
+                    setActiveTab('trading');
+                  }}
+                />
+              )}
+
+              {activeTab === 'analysis' && (
+                <StockAnalysisView
+                  selectedQuote={selectedQuote}
+                  onAskCopilot={(prompt) => {
+                    setIsCopilotOpen(true);
+                    handleSendMessageToCopilot(prompt);
+                  }}
+                  onNavigateToPaperTrading={() => setActiveTab('trading')}
+                />
+              )}
+
+              {activeTab === 'screener' && (
+                <ScreenerView
+                  quotes={quotes}
+                  onSelectQuote={setSelectedQuote}
+                  onAnalyzeQuote={(q) => {
+                    setSelectedQuote(q);
+                    setActiveTab('analysis');
+                  }}
+                />
+              )}
+
+              {activeTab === 'trading' && (
+                <PaperTrading
+                  selectedQuote={selectedQuote}
+                  quotes={quotes}
+                  onSelectQuote={setSelectedQuote}
+                  virtualCash={virtualCash}
+                  positions={virtualPositions}
+                  orderHistory={virtualOrders}
+                  onPlaceOrder={handlePlacePaperOrder}
+                  onResetPortfolio={handleResetVirtualPortfolio}
+                  onNavigateToAnalysis={() => setActiveTab('analysis')}
+                  onNavigateToPortfolio={() => setActiveTab('portfolio')}
+                />
+              )}
+
+              {activeTab === 'news' && (
+                <NewsFeedView
+                  onSearchSymbol={handleSearchSymbol}
+                  onNavigateToAnalysis={() => setActiveTab('analysis')}
+                />
+              )}
+
+              {activeTab === 'portfolio' && (
+                <PortfolioView
+                  onSearchSymbol={handleSearchSymbol}
+                  onNavigateToAnalysis={() => setActiveTab('analysis')}
+                  virtualPositions={virtualPositions}
+                  virtualOrders={virtualOrders}
+                  virtualCash={virtualCash}
+                  quotes={quotes}
+                  onNavigateToTrading={() => setActiveTab('trading')}
+                />
+              )}
+
+              {activeTab === 'alerts' && (
+                <AlertsView
+                  alerts={alerts}
+                  onAddAlert={(customAlert) => {
+                    setAlerts((prev) => {
+                      if (prev.some((a) => a.id === customAlert.id)) return prev;
+                      return [customAlert, ...prev];
+                    });
+                  }}
+                  onSearchSymbol={handleSearchSymbol}
+                  onNavigateToAnalysis={() => setActiveTab('analysis')}
+                  volatilityThreshold={volatilityThreshold}
+                  onUpdateVolatilityThreshold={setVolatilityThreshold}
+                  onSimulateVolatilitySpike={handleSimulateVolatilitySpike}
+                />
+              )}
+
+              {activeTab === 'datamodel' && (
+                <DataModelView />
+              )}
+            </div>
           )}
         </main>
       </div>
