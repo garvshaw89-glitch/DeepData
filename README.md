@@ -120,7 +120,7 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/deepdata.git
+git clone https://github.com/garvshaw89-glitch/deepdata.git
 cd deepdata
 ```
 
